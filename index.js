@@ -83,14 +83,115 @@ async function loadMessages() {
 
 
 
-function safeHTML(input) {
+function safeHTML(input){
 
-    return String(input)
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#39;");
+    const allowed =
+        [
+            "b",
+            "strong",
+            "i",
+            "em",
+            "u",
+            "s",
+            "br",
+            "a",
+            "img"
+        ];
+
+
+    const parser =
+        new DOMParser();
+
+
+    const doc =
+        parser.parseFromString(
+            input,
+            "text/html"
+        );
+
+
+    function clean(node){
+
+
+        if(node.nodeType === Node.TEXT_NODE){
+            return;
+        }
+
+
+        if(node.nodeType === Node.ELEMENT_NODE){
+
+
+            const tag =
+                node.tagName.toLowerCase();
+
+
+            if(!allowed.includes(tag)){
+
+
+                const parent =
+                    node.parentNode;
+
+
+                while(node.firstChild){
+                    parent.insertBefore(
+                        node.firstChild,
+                        node
+                    );
+                }
+
+
+                parent.removeChild(node);
+
+                return;
+
+            }
+
+
+
+            for(
+                const attr of [...node.attributes]
+            ){
+
+                if(
+                    tag === "img" &&
+                    attr.name === "src"
+                ){
+                    continue;
+                }
+
+
+                if(
+                    tag === "a" &&
+                    (
+                        attr.name === "href" ||
+                        attr.name === "target"
+                    )
+                ){
+                    continue;
+                }
+
+
+                node.removeAttribute(attr.name);
+
+            }
+
+
+        }
+
+
+        for(
+            const child of [...node.childNodes]
+        ){
+            clean(child);
+        }
+
+    }
+
+
+    clean(doc.body);
+
+
+    return doc.body.innerHTML;
 
 }
 
