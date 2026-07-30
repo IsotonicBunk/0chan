@@ -5,6 +5,8 @@ let messages = [];
 
 const API_URL = "https://0chan-orpin.vercel.app/api";
 
+const MESSAGES_URL = `${API_URL}/messages`;
+const SEND_URL = `${API_URL}/send`;
 
 
 function startAutoRefresh() {
@@ -28,151 +30,228 @@ function stopAutoRefresh() {
 }
 
 
+
 async function loadMessages() {
+
     try {
+
         const oldLength = messages.length;
 
-        const response = await fetch(API_URL);
+
+        const response = await fetch(MESSAGES_URL);
+
 
         if (!response.ok) {
-            throw new Error("API error");
+            throw new Error(
+                `API error: ${response.status}`
+            );
         }
+
 
         messages = await response.json();
 
-        if (oldLength < messages.length) {
+
+        if (oldLength !== messages.length) {
+
             displayMessages();
 
-            if (document.getElementById("autoscroll-inp")?.checked) {
+
+            if (
+                document.getElementById("autoscroll-inp")
+                ?.checked
+            ) {
                 window.scrollTo(
                     0,
                     document.body.scrollHeight
                 );
             }
+
         }
 
-    } catch (error) {
-        console.error("Load error:", error);
+
+    } catch(error) {
+
+        console.error(
+            "Load error:",
+            error
+        );
+
     }
+
 }
 
 
+
+
 function safeHTML(input) {
+
     return String(input)
         .replaceAll("&", "&amp;")
         .replaceAll("<", "&lt;")
         .replaceAll(">", "&gt;")
         .replaceAll('"', "&quot;")
         .replaceAll("'", "&#39;");
+
 }
+
+
 
 
 function displayMessages() {
 
+
     const container =
-        document.getElementById("messages-container")
+        document.getElementById(
+            "messages-container"
+        )
         || document.body;
+
 
 
     container.innerHTML = "";
 
 
+
     messages.forEach((msg, index) => {
+
 
         const element =
             document.createElement("p");
+
 
 
         let time;
 
 
         if (msg.time?._seconds) {
+
             time = new Date(
                 msg.time._seconds * 1000
             );
-        }
-        else {
+
+        } else {
+
             time = new Date();
+
         }
+
 
 
         element.innerHTML = `
+
             <strong>
                 ${safeHTML(msg.username)}
             </strong>
 
+
             <span style="color:#999">
+
             -
             ${time.getDate()
                 .toString()
-                .padStart(2,"0")}.
-            ${(time.getMonth()+1)
+                .padStart(2, "0")}.
+            ${(time.getMonth() + 1)
                 .toString()
-                .padStart(2,"0")}.
+                .padStart(2, "0")}.
             ${time.getFullYear()}
+
 
             ${time.getHours()
                 .toString()
-                .padStart(2,"0")}:
+                .padStart(2, "0")}:
             ${time.getMinutes()
                 .toString()
-                .padStart(2,"0")}:
+                .padStart(2, "0")}:
             ${time.getSeconds()
                 .toString()
-                .padStart(2,"0")}
+                .padStart(2, "0")}
+
 
             [${index + 1}]
+
             </span>
+
 
             <br>
 
+
             ${safeHTML(msg.message)}
+
         `;
 
 
         container.appendChild(element);
 
+
     });
+
+
 }
+
+
 
 
 
 async function send() {
 
+
     const username =
-        document.getElementById("username-inp")
+        document.getElementById(
+            "username-inp"
+        )
         ?.value.trim()
         || "Anonymous";
 
 
+
     const message =
-        document.getElementById("message-inp")
+        document.getElementById(
+            "message-inp"
+        )
         ?.value.trim();
 
 
-    if (!message)
+
+    if (!message) {
         return;
+    }
 
 
 
     try {
 
-        await fetch(API_URL, {
 
-            method: "POST",
+        const response = await fetch(
+            SEND_URL,
+            {
 
-            headers: {
-                "Content-Type": "application/json"
-            },
+                method: "POST",
 
-            body: JSON.stringify({
+                headers: {
+                    "Content-Type": "application/json"
+                },
 
-                username,
-                message
 
-            })
+                body: JSON.stringify({
 
-        });
+                    username,
+                    message
+
+                })
+
+            }
+        );
+
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                `Send error: ${response.status}`
+            );
+
+        }
+
 
 
         document.getElementById(
@@ -180,7 +259,9 @@ async function send() {
         ).value = "";
 
 
+
         await loadMessages();
+
 
 
     } catch(error) {
@@ -196,6 +277,8 @@ async function send() {
 
 
 
+
+
 document.addEventListener(
     "DOMContentLoaded",
     () => {
@@ -207,23 +290,31 @@ document.addEventListener(
 
 
 
+
+
 document.addEventListener(
     "keydown",
     event => {
 
-        if(event.key === "Enter") {
 
-            if(
+        if (event.key === "Enter") {
+
+
+            if (
+                event.target.tagName !== "INPUT" &&
                 event.target.tagName !== "TEXTAREA"
-                &&
-                event.target.tagName !== "INPUT"
             ) {
+
                 event.preventDefault();
+
             }
+
 
             send();
 
+
         }
+
 
     }
 );
