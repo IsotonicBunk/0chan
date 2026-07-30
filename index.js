@@ -285,11 +285,19 @@ function safeHTML(input) {
         src &&
         /^https?:\/\//i.test(src)
     ) {
-        newNode.src = src;
+
+        newNode.setAttribute(
+            "src",
+            src
+        );
+
     }
 
 
-    newNode.controls = true;
+    newNode.setAttribute(
+        "controls",
+        ""
+    );
 
 
     const width =
@@ -300,14 +308,21 @@ function safeHTML(input) {
 
         const w = parseInt(width);
 
-        if(!isNaN(w) && w < 2000){
-            newNode.width = w;
+        if(
+            !isNaN(w) &&
+            w < 2000
+        ){
+
+            newNode.setAttribute(
+                "width",
+                w
+            );
+
         }
 
     }
 
 }
-
 
 
 
