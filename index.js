@@ -9,25 +9,31 @@ const MESSAGES_URL = `${API_URL}/messages`;
 const SEND_URL = `${API_URL}/send`;
 
 
+
 function startAutoRefresh() {
+
     if (refreshInterval) {
         clearInterval(refreshInterval);
     }
 
-    refreshInterval = setInterval(() => {
-        loadMessages();
-    }, REFRESH_DELAY);
+    refreshInterval = setInterval(loadMessages, REFRESH_DELAY);
 
     loadMessages();
+
 }
 
 
+
 function stopAutoRefresh() {
+
     if (refreshInterval) {
         clearInterval(refreshInterval);
         refreshInterval = null;
     }
+
 }
+
+
 
 
 
@@ -35,35 +41,45 @@ async function loadMessages() {
 
     try {
 
-        const oldLength = messages.length;
-
-
         const response = await fetch(MESSAGES_URL);
 
 
         if (!response.ok) {
             throw new Error(
-                `API error: ${response.status}`
+                `API error ${response.status}`
             );
         }
 
 
-        messages = await response.json();
+        const data = await response.json();
+
+
+        if (!Array.isArray(data)) {
+            throw new Error(
+                "Invalid messages format"
+            );
+        }
+
+
+        const oldLength = messages.length;
+
+        messages = data;
 
 
         if (oldLength !== messages.length) {
 
             displayMessages();
 
-
             if (
                 document.getElementById("autoscroll-inp")
                 ?.checked
             ) {
+
                 window.scrollTo(
                     0,
                     document.body.scrollHeight
                 );
+
             }
 
         }
@@ -83,7 +99,18 @@ async function loadMessages() {
 
 
 
+
 function safeHTML(input) {
+
+
+    if (input === null || input === undefined) {
+        return "";
+    }
+
+
+    input = String(input);
+
+
 
     const allowedTags = [
         "b",
@@ -98,15 +125,30 @@ function safeHTML(input) {
     ];
 
 
-    const parser = new DOMParser();
 
-    const doc = parser.parseFromString(
-        String(input),
-        "text/html"
-    );
+    let doc;
 
 
-    function sanitize(node) {
+    try {
+
+        doc = new DOMParser()
+            .parseFromString(
+                input,
+                "text/html"
+            );
+
+    } catch {
+
+        return escapeHTML(input);
+
+    }
+
+
+
+
+
+    function clean(node) {
+
 
         if (!node) {
             return null;
@@ -114,7 +156,11 @@ function safeHTML(input) {
 
 
         if (node.nodeType === Node.TEXT_NODE) {
-            return document.createTextNode(node.textContent);
+
+            return document.createTextNode(
+                node.textContent
+            );
+
         }
 
 
@@ -123,26 +169,30 @@ function safeHTML(input) {
         }
 
 
-        const tag = node.tagName.toLowerCase();
 
 
-        // Если тег запрещён — оставляем только текст/детей
+        const tag =
+            node.tagName.toLowerCase();
+
+
+
         if (!allowedTags.includes(tag)) {
+
 
             const fragment =
                 document.createDocumentFragment();
 
 
-            for (const child of [...node.childNodes]) {
 
-                const cleanChild =
-                    sanitize(child);
+            [...node.childNodes].forEach(child => {
 
-                if (cleanChild) {
-                    fragment.appendChild(cleanChild);
+                const result = clean(child);
+
+                if (result) {
+                    fragment.appendChild(result);
                 }
 
-            }
+            });
 
 
             return fragment;
@@ -150,23 +200,29 @@ function safeHTML(input) {
         }
 
 
+
+
+
         const newNode =
             document.createElement(tag);
 
 
 
-        // Разрешённые атрибуты
+
         if (tag === "img") {
+
 
             const src =
                 node.getAttribute("src");
 
-            if (src) {
 
-                newNode.setAttribute(
-                    "src",
-                    src
-                );
+            if (
+                src &&
+                src.length < 2000 &&
+                /^https?:\/\//i.test(src)
+            ) {
+
+                newNode.src = src;
 
             }
 
@@ -174,58 +230,67 @@ function safeHTML(input) {
             const width =
                 node.getAttribute("width");
 
-            if (width) {
 
-                newNode.setAttribute(
-                    "width",
-                    width
-                );
+            if(width) {
+
+                const w =
+                    parseInt(width);
+
+
+                if(
+                    !isNaN(w) &&
+                    w < 2000
+                ) {
+
+                    newNode.width = w;
+
+                }
 
             }
 
         }
 
 
+
+
+
         if (tag === "a") {
+
 
             const href =
                 node.getAttribute("href");
 
 
-            if (href) {
+            if(
+                href &&
+                /^https?:\/\//i.test(href)
+            ) {
 
-                newNode.setAttribute(
-                    "href",
-                    href
-                );
+                newNode.href = href;
 
             }
 
 
-            newNode.setAttribute(
-                "target",
-                "_blank"
-            );
+            newNode.target = "_blank";
 
         }
 
 
 
-        for (const child of [...node.childNodes]) {
-
-            const cleanChild =
-                sanitize(child);
 
 
-            if (cleanChild) {
+        [...node.childNodes].forEach(child => {
 
-                newNode.appendChild(
-                    cleanChild
-                );
+            const result = clean(child);
+
+            if(result) {
+
+                newNode.appendChild(result);
 
             }
 
-        }
+        });
+
 
 
         return newNode;
@@ -234,28 +299,47 @@ function safeHTML(input) {
 
 
 
+
+
     const container =
         document.createElement("div");
 
 
-    for (const child of [...doc.body.childNodes]) {
 
-        const clean =
-            sanitize(child);
+    [...doc.body.childNodes].forEach(node => {
 
+        const result = clean(node);
 
-        if (clean) {
+        if(result) {
 
-            container.appendChild(clean);
+            container.appendChild(result);
 
         }
 
-    }
+    });
+
 
 
     return container.innerHTML;
 
 }
+
+
+
+
+
+function escapeHTML(text) {
+
+    return String(text)
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#39;");
+
+}
+
+
 
 
 
@@ -265,8 +349,12 @@ function displayMessages() {
     const container =
         document.getElementById(
             "messages-container"
-        )
-        || document.body;
+        );
+
+
+    if(!container) {
+        return;
+    }
 
 
 
@@ -274,7 +362,17 @@ function displayMessages() {
 
 
 
-    messages.forEach((msg, index) => {
+
+    messages.forEach((msg,index)=>{
+
+
+        if(
+            !msg ||
+            typeof msg !== "object"
+        ) {
+            return;
+        }
+
 
 
         const element =
@@ -282,64 +380,53 @@ function displayMessages() {
 
 
 
-        let time;
+        let time = new Date();
 
 
-        if (msg.time?._seconds) {
 
-            time = new Date(
-                msg.time._seconds * 1000
-            );
+        if(msg.time?._seconds) {
 
-        } else {
-
-            time = new Date();
+            time =
+                new Date(
+                    msg.time._seconds * 1000
+                );
 
         }
 
 
 
+
+
         element.innerHTML = `
 
-            <strong>
-                ${safeHTML(msg.username)}
-            </strong>
+<strong>
+${safeHTML(msg.username || "Anonymous")}
+</strong>
 
 
-            <span style="color:#999">
+<span style="color:#999">
 
-            -
-            ${time.getDate()
-                .toString()
-                .padStart(2, "0")}.
-            ${(time.getMonth() + 1)
-                .toString()
-                .padStart(2, "0")}.
-            ${time.getFullYear()}
+-
+${time.getDate().toString().padStart(2,"0")}.
+${(time.getMonth()+1).toString().padStart(2,"0")}.
+${time.getFullYear()}
 
+${time.getHours().toString().padStart(2,"0")}:
+${time.getMinutes().toString().padStart(2,"0")}:
+${time.getSeconds().toString().padStart(2,"0")}
 
-            ${time.getHours()
-                .toString()
-                .padStart(2, "0")}:
-            ${time.getMinutes()
-                .toString()
-                .padStart(2, "0")}:
-            ${time.getSeconds()
-                .toString()
-                .padStart(2, "0")}
+[${index+1}]
+
+</span>
 
 
-            [${index + 1}]
-
-            </span>
+<br>
 
 
-            <br>
+${safeHTML(msg.message)}
 
+`;
 
-            ${safeHTML(msg.message)}
-
-        `;
 
 
         container.appendChild(element);
@@ -354,6 +441,7 @@ function displayMessages() {
 
 
 
+
 async function send() {
 
 
@@ -362,11 +450,12 @@ async function send() {
             "username-inp"
         )
         ?.value.trim()
-        || "Anonymous";
+        ||
+        "Anonymous";
 
 
 
-    const message =
+    let message =
         document.getElementById(
             "message-inp"
         )
@@ -374,42 +463,56 @@ async function send() {
 
 
 
-    if (!message) {
+
+    if(!message) {
         return;
     }
+
+
+
+    if(message.length > 5000) {
+
+        alert(
+            "Message too long"
+        );
+
+        return;
+
+    }
+
+
 
 
 
     try {
 
 
-        const response = await fetch(
-            SEND_URL,
-            {
+        const response =
+            await fetch(
+                SEND_URL,
+                {
 
-                method: "POST",
+                    method:"POST",
 
-                headers: {
-                    "Content-Type": "application/json"
-                },
+                    headers:{
+                        "Content-Type":
+                        "application/json"
+                    },
 
+                    body:JSON.stringify({
+                        username,
+                        message
+                    })
 
-                body: JSON.stringify({
-
-                    username,
-                    message
-
-                })
-
-            }
-        );
-
+                }
+            );
 
 
-        if (!response.ok) {
+
+        if(!response.ok) {
 
             throw new Error(
-                `Send error: ${response.status}`
+                await response.text()
             );
 
         }
@@ -418,7 +521,7 @@ async function send() {
 
         document.getElementById(
             "message-inp"
-        ).value = "";
+        ).value="";
 
 
 
@@ -441,71 +544,50 @@ async function send() {
 
 
 
-document.addEventListener(
-    "DOMContentLoaded",
-    () => {
 
-        startAutoRefresh();
-
-    }
-);
-
-
-
-
-
-document.addEventListener(
-    "keydown",
-    event => {
-
-
-        if (event.key === "Enter") {
-
-
-            if (
-                event.target.tagName !== "INPUT" &&
-                event.target.tagName !== "TEXTAREA"
-            ) {
-
-                event.preventDefault();
-
-            }
-
-
-            send();
-
-
-        }
-
-
-    }
-);
 function addLink(){
 
     const link =
-        document.getElementById("link-inp").value;
-
-    const preview =
-        document.getElementById("prev-inp").value;
+        document.getElementById("link-inp")
+        .value.trim();
 
 
-    document.getElementById("message-inp").value +=
-        `<a href="${link}" target="_blank">${preview}</a>`;
+    const text =
+        document.getElementById("prev-inp")
+        .value.trim();
+
+
+
+    document.getElementById("message-inp")
+    .value +=
+    `<a href="${link}" target="_blank">${text}</a>`;
 
 }
+
+
 
 
 
 function addImage(){
 
     const link =
-        document.getElementById("img-link-inp").value;
+        document.getElementById("img-link-inp")
+        .value.trim();
 
 
-    document.getElementById("message-inp").value +=
-        `<img src="${link}" width="450">`;
+
+    if(!link)
+        return;
+
+
+
+    document.getElementById("message-inp")
+    .value +=
+    `<img src="${link.replaceAll('"','')}" width="450">`;
 
 }
+
+
 
 
 
@@ -513,50 +595,91 @@ function addReply(){
 
     const id =
         parseInt(
-            document.getElementById("mention-inp").value
+            document.getElementById("mention-inp")
+            .value
         );
 
 
-    const msg = messages[id - 1];
+    const msg =
+        messages[id-1];
+
 
 
     if(!msg)
         return;
 
 
-    let text = msg.message;
+
+    let text =
+        String(msg.message || "");
 
 
-    if(text.length > 50){
-        text = text.slice(0,50) + "...";
+
+    if(text.length > 50) {
+
+        text =
+            text.slice(0,50)
+            + "...";
+
     }
 
 
-    document.getElementById("message-inp").value +=
-        `~Reply to <i>${text}</i><br><br>`;
+
+    document.getElementById("message-inp")
+    .value +=
+    `~Reply to <i>${text}</i><br><br>`;
 
 }
+
+
 
 
 
 function switchAdvancedOptions(){
 
     const panel =
-        document.getElementById("options-panel");
+        document.getElementById(
+            "options-panel"
+        );
 
 
-    const checked =
-        document.getElementById("adv-inp").checked;
+    if(!panel)
+        return;
 
 
-    if(checked){
 
-        panel.style.display = "none";
+    panel.style.display =
+        document.getElementById("adv-inp")
+        .checked
+        ?
+        "none"
+        :
+        "block";
 
-    } else {
+}
 
-        panel.style.display = "block";
+
+
+
+
+
+document.addEventListener(
+"DOMContentLoaded",
+()=>{
+
+    startAutoRefresh();
+
+});
+
+
+document.addEventListener(
+"keydown",
+event=>{
+
+    if(event.key==="Enter"){
+
+        send();
 
     }
 
-}
+});
