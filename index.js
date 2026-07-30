@@ -83,118 +83,179 @@ async function loadMessages() {
 
 
 
-function safeHTML(input){
+function safeHTML(input) {
 
-    const allowed =
-        [
-            "b",
-            "strong",
-            "i",
-            "em",
-            "u",
-            "s",
-            "br",
-            "a",
-            "img"
-        ];
-
-
-    const parser =
-        new DOMParser();
+    const allowedTags = [
+        "b",
+        "strong",
+        "i",
+        "em",
+        "u",
+        "s",
+        "br",
+        "a",
+        "img"
+    ];
 
 
-    const doc =
-        parser.parseFromString(
-            input,
-            "text/html"
-        );
+    const parser = new DOMParser();
+
+    const doc = parser.parseFromString(
+        String(input),
+        "text/html"
+    );
 
 
-    function clean(node){
+    function sanitize(node) {
 
-
-        if(node.nodeType === Node.TEXT_NODE){
-            return;
+        if (!node) {
+            return null;
         }
 
 
-        if(node.nodeType === Node.ELEMENT_NODE){
+        if (node.nodeType === Node.TEXT_NODE) {
+            return document.createTextNode(node.textContent);
+        }
 
 
-            const tag =
-                node.tagName.toLowerCase();
+        if (node.nodeType !== Node.ELEMENT_NODE) {
+            return null;
+        }
 
 
-            if(!allowed.includes(tag)){
+        const tag = node.tagName.toLowerCase();
 
 
-                const parent =
-                    node.parentNode;
+        // Если тег запрещён — оставляем только текст/детей
+        if (!allowedTags.includes(tag)) {
+
+            const fragment =
+                document.createDocumentFragment();
 
 
-                while(node.firstChild){
-                    parent.insertBefore(
-                        node.firstChild,
-                        node
-                    );
+            for (const child of [...node.childNodes]) {
+
+                const cleanChild =
+                    sanitize(child);
+
+                if (cleanChild) {
+                    fragment.appendChild(cleanChild);
                 }
-
-
-                parent.removeChild(node);
-
-                return;
 
             }
 
 
-
-            for(
-                const attr of [...node.attributes]
-            ){
-
-                if(
-                    tag === "img" &&
-                    attr.name === "src"
-                ){
-                    continue;
-                }
-
-
-                if(
-                    tag === "a" &&
-                    (
-                        attr.name === "href" ||
-                        attr.name === "target"
-                    )
-                ){
-                    continue;
-                }
-
-
-                node.removeAttribute(attr.name);
-
-            }
-
+            return fragment;
 
         }
 
 
-        for(
-            const child of [...node.childNodes]
-        ){
-            clean(child);
+        const newNode =
+            document.createElement(tag);
+
+
+
+        // Разрешённые атрибуты
+        if (tag === "img") {
+
+            const src =
+                node.getAttribute("src");
+
+            if (src) {
+
+                newNode.setAttribute(
+                    "src",
+                    src
+                );
+
+            }
+
+
+            const width =
+                node.getAttribute("width");
+
+            if (width) {
+
+                newNode.setAttribute(
+                    "width",
+                    width
+                );
+
+            }
+
+        }
+
+
+        if (tag === "a") {
+
+            const href =
+                node.getAttribute("href");
+
+
+            if (href) {
+
+                newNode.setAttribute(
+                    "href",
+                    href
+                );
+
+            }
+
+
+            newNode.setAttribute(
+                "target",
+                "_blank"
+            );
+
+        }
+
+
+
+        for (const child of [...node.childNodes]) {
+
+            const cleanChild =
+                sanitize(child);
+
+
+            if (cleanChild) {
+
+                newNode.appendChild(
+                    cleanChild
+                );
+
+            }
+
+        }
+
+
+        return newNode;
+
+    }
+
+
+
+    const container =
+        document.createElement("div");
+
+
+    for (const child of [...doc.body.childNodes]) {
+
+        const clean =
+            sanitize(child);
+
+
+        if (clean) {
+
+            container.appendChild(clean);
+
         }
 
     }
 
 
-    clean(doc.body);
-
-
-    return doc.body.innerHTML;
+    return container.innerHTML;
 
 }
-
 
 
 
