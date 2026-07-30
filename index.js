@@ -121,7 +121,8 @@ function safeHTML(input) {
         "s",
         "br",
         "a",
-        "img"
+        "img",
+        "vid"
     ];
 
 
