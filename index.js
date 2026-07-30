@@ -275,7 +275,38 @@ function safeHTML(input) {
             newNode.target = "_blank";
 
         }
+        if (tag === "video") {
 
+    const src =
+        node.getAttribute("src");
+
+
+    if (
+        src &&
+        /^https?:\/\//i.test(src)
+    ) {
+        newNode.src = src;
+    }
+
+
+    newNode.controls = true;
+
+
+    const width =
+        node.getAttribute("width");
+
+
+    if(width){
+
+        const w = parseInt(width);
+
+        if(!isNaN(w) && w < 2000){
+            newNode.width = w;
+        }
+
+    }
+
+}
 
 
 
