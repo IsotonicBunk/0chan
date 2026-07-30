@@ -730,3 +730,21 @@ event=>{
     }
 
 });
+function addVideo(){
+
+    const link =
+        document.getElementById("vid-link-inp")
+        .value.trim();
+
+
+
+    if(!link)
+        return;
+
+
+
+    document.getElementById("message-inp")
+    .value +=
+    `<video src="${link.replaceAll('"','')}" width="450" controls>`;
+
+}
