@@ -318,3 +318,83 @@ document.addEventListener(
 
     }
 );
+function addLink(){
+
+    const link =
+        document.getElementById("link-inp").value;
+
+    const preview =
+        document.getElementById("prev-inp").value;
+
+
+    document.getElementById("message-inp").value +=
+        `<a href="${link}" target="_blank">${preview}</a>`;
+
+}
+
+
+
+function addImage(){
+
+    const link =
+        document.getElementById("img-link-inp").value;
+
+
+    document.getElementById("message-inp").value +=
+        `<img src="${link}" width="450">`;
+
+}
+
+
+
+function addReply(){
+
+    const id =
+        parseInt(
+            document.getElementById("mention-inp").value
+        );
+
+
+    const msg = messages[id - 1];
+
+
+    if(!msg)
+        return;
+
+
+    let text = msg.message;
+
+
+    if(text.length > 50){
+        text = text.slice(0,50) + "...";
+    }
+
+
+    document.getElementById("message-inp").value +=
+        `~Reply to <i>${text}</i><br><br>`;
+
+}
+
+
+
+function switchAdvancedOptions(){
+
+    const panel =
+        document.getElementById("options-panel");
+
+
+    const checked =
+        document.getElementById("adv-inp").checked;
+
+
+    if(checked){
+
+        panel.style.display = "none";
+
+    } else {
+
+        panel.style.display = "block";
+
+    }
+
+}
