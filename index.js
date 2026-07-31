@@ -8,7 +8,11 @@ const API_URL = "https://0chan-orpin.vercel.app/api";
 const MESSAGES_URL = `${API_URL}/messages`;
 const SEND_URL = `${API_URL}/send`;
 
+let isUserInteracted = false;
 
+document.addEventListener("click", () => {
+    isUserInteracted = true;
+});
 
 function startAutoRefresh() {
 
@@ -64,24 +68,24 @@ async function loadMessages() {
         const oldLength = messages.length;
 
         messages = data;
+        
+        if(document.getElementById("log-inp")?.checked){
+    console.log("Messages:", messages);
+}
 
-
-        if (oldLength !== messages.length) {
+        if (oldLength < messages.length) {
 
             displayMessages();
+            if(isUserInteracted){
 
-            if (
-                document.getElementById("autoscroll-inp")
-                ?.checked
-            ) {
+    const sound = new Audio("sound/imsend.wav");
 
-                window.scrollTo(
-                    0,
-                    document.body.scrollHeight
-                );
+    sound.play().catch(() => {});
 
-            }
-
+}
+            if(document.getElementById("autoscroll-inp")?.checked){
+    window.scrollTo(0, document.body.scrollHeight);
+}
         }
 
 
@@ -113,17 +117,29 @@ function safeHTML(input) {
 
 
     const allowedTags = [
-        "b",
-        "strong",
-        "i",
-        "em",
-        "u",
-        "s",
-        "br",
-        "a",
-        "img",
-        "video"
-    ];
+    "a",
+    "b",
+    "strong",
+    "i",
+    "em",
+    "u",
+    "s",
+    "sup",
+    "sub",
+    "small",
+    "big",
+    "code",
+    "br",
+    "mark",
+    "img",
+    "video",
+    "h1",
+    "h2",
+    "h3",
+    "ul",
+    "ol",
+    "li"
+];
 
 
 
@@ -212,45 +228,22 @@ function safeHTML(input) {
 
         if (tag === "img") {
 
+    const attrs = ["src","alt","width","height"];
 
-            const src =
-                node.getAttribute("src");
+    attrs.forEach(attr => {
 
+        const value = node.getAttribute(attr);
 
-            if (
-                src &&
-                src.length < 2000 &&
-                /^https?:\/\//i.test(src)
-            ) {
+        if(!value) return;
 
-                newNode.src = src;
+        if(attr === "src" && !/^https?:\/\//i.test(value))
+            return;
 
-            }
+        newNode.setAttribute(attr, value);
 
+    });
 
-            const width =
-                node.getAttribute("width");
-
-
-            if(width) {
-
-                const w =
-                    parseInt(width);
-
-
-                if(
-                    !isNaN(w) &&
-                    w < 2000
-                ) {
-
-                    newNode.width = w;
-
-                }
-
-            }
-
-        }
-
+}
 
 
 
@@ -277,51 +270,32 @@ function safeHTML(input) {
         }
         if (tag === "video") {
 
-    const src =
-        node.getAttribute("src");
-
-
-    if (
-        src &&
-        /^https?:\/\//i.test(src)
-    ) {
-
-        newNode.setAttribute(
-            "src",
-            src
-        );
-
-    }
-
-
-    newNode.setAttribute(
+    const attrs = [
+        "src",
         "controls",
-        ""
-    );
+        "width",
+        "height"
+    ];
 
+    attrs.forEach(attr => {
 
-    const width =
-        node.getAttribute("width");
+        const value = node.getAttribute(attr);
 
-
-    if(width){
-
-        const w = parseInt(width);
-
-        if(
-            !isNaN(w) &&
-            w < 2000
-        ){
-
-            newNode.setAttribute(
-                "width",
-                w
-            );
-
+        if(attr === "controls"){
+            newNode.setAttribute("controls","");
+            return;
         }
 
-    }
+        if(!value) return;
 
+        if(attr === "src" && !/^https?:\/\//i.test(value))
+            return;
+
+        newNode.setAttribute(attr,value);
+
+    });
+
+}
 }
 
 
@@ -736,15 +710,10 @@ function addVideo(){
         document.getElementById("vid-link-inp")
         .value.trim();
 
-
-
     if(!link)
         return;
 
-
-
-    document.getElementById("message-inp")
-    .value +=
-    `<video src="${link.replaceAll('"','')}" width="450" controls>`;
+    document.getElementById("message-inp").value +=
+        `<video src="${link.replaceAll('"',"")}" controls width="450"></video>`;
 
 }
