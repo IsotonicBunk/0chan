@@ -296,7 +296,6 @@ function safeHTML(input) {
     });
 
 }
-}
 
 
 
